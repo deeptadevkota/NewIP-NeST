@@ -26,6 +26,8 @@ from New_IP.setup import Setup
 from New_IP.sender import Sender
 from New_IP.newip_hdr import LatencyBasedForwarding
 
+
+
 setup_obj = Setup()
 setup_obj.setup_topology(buildLbf=False)
 setup_obj.start_receiver(timeout=2)

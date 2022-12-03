@@ -175,6 +175,40 @@ class CoapFlow(Flow):
         )
 
 
+class NonLbfFlow:
+    @input_validator
+    def __init__(
+        self,
+        src_node: str,
+        dst_node: str,
+        src_addr_type: str,
+        dst_addr_type: str,
+        timeout:int,
+        pkt_count: int,
+    ):
+        self.src_node = src_node
+        self.dst_node = dst_node
+        self.src_addr_type = src_addr_type
+        self.dst_addr_type = dst_addr_type
+        self.timeout = timeout
+        self.pkt_count = pkt_count
+
+    def _get_props(self):
+        """
+        Get flow properties.
+
+        NOTE: To be used internally
+        """
+
+        return [
+            self.src_node,
+            self.dst_node,
+            self.src_addr_type,
+            self.dst_addr_type,
+            self.timeout,
+            self.pkt_count
+        ]
+
 class Experiment:
     """Handles experiment to be run on topology"""
 
@@ -195,6 +229,7 @@ class Experiment:
         self.name = name
         self.flows = []
         self.coap_flows = []
+        self.non_lbf_flows = []
         self.node_stats = []
         self.qdisc_stats = []
         self.tcp_module_params = defaultdict(dict)
@@ -309,6 +344,10 @@ class Experiment:
             The coap flow to be added to experiment
         """
         self.coap_flows.append(copy.deepcopy(coap_flow))
+
+    @input_validator
+    def add_non_lbf_flow(self, non_lbf_flow: NonLbfFlow):
+        self.non_lbf_flows.append(copy.deepcopy(non_lbf_flow))
 
     @input_validator
     def require_qdisc_stats(self, interface: BaseInterface, stats=""):
