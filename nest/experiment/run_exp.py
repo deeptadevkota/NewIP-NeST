@@ -75,8 +75,8 @@ def run_experiment(exp):
         netperf=[], ss=[], tc=[], iperf3=[], ping=[], coap=[], server=[]
     )  # Runner objects
 
-    # Keep track of all destination nodes [to ensure netperf, iperf3 and
-    # coap server is run at most once]
+    # # Keep track of all destination nodes [to ensure netperf, iperf3 and
+    # # coap server is run at most once]
     destination_nodes = {"netperf": set(), "iperf3": set(), "coap": set()}
 
     # Contains start time and end time to run respective command
@@ -178,8 +178,8 @@ def run_experiment(exp):
     for non_lbf_flow in exp.non_lbf_flows:
 
         [
-            src_node,
-            dst_node,
+            srcNodes,
+            dstNodes,
             src_addr_type,
             dst_addr_type,
             timeout,
@@ -187,29 +187,10 @@ def run_experiment(exp):
          
         ] = non_lbf_flow._get_props() 
 
-
-        # from here
-
-        netObj = Setup()
-        netObj.setup_topology()
-        srcNode = netObj.info_dict[src_node]["node"]
-        dstNode = netObj.info_dict[dst_node]["node"]
-
         
+        exp_end_t = max(exp_end_t, timeout)
 
-        # keep this also outside the run_exp file because considering a sender receiver pair 
-        recVerbose = True
-        netObj.start_receiver(
-                timeout=timeout, nodeList=[dstNode], verbose=recVerbose
-            )
-
-        # to here keep before calling the run experiment
-
-
-
-        
-        sender_proc = multiprocessing.Process(target=sender_process,args=(srcNode, dstNode, pkt_count, src_addr_type, dst_addr_type, netObj))
-        sender_proc.start()
+        lbf_forwarder_obj = lbf_forwarder(srcNodes, dstNodes, src_addr_type, dst_addr_type, timeout, pkt_count)
 
         print("upto here printed")
 
@@ -265,36 +246,7 @@ def run_experiment(exp):
     finally:
         cleanup()
 
-def sender_process(srcNode, dstNode, pkt_count, src_addr_type, dst_addr_type, netObj):
-    with srcNode:
-        srcIf = srcNode._interfaces[0].name
-    for index in range(int(pkt_count)):
-        sender = Sender()
-        payload = pkt_fill(index)
-        create_lbf_pkt(sender, srcNode, dstNode, src_addr_type, dst_addr_type, payload, netObj, nolbf = True)
-        sender.send_packet(iface=srcIf)
 
-def pkt_fill(index):
-        START = "pkt# %d " % (index)
-        remaining = 100 - len(START)  # hard coded the default packet size as 100 - should be configurable parameter
-        chars = string.ascii_uppercase + string.digits
-        return START + "".join(random.choice(chars) for _ in range(remaining))
-
-def create_lbf_pkt(sender, srcNode, dstNode, src_addr_type, dst_addr_type, content, netObj, nolbf):
-        
-        src_addr = netObj.info_dict[srcNode.name][src_addr_type]
-        dst_addr = netObj.info_dict[dstNode.name][dst_addr_type]
-        sender.make_packet(
-            src_addr_type,
-            src_addr,
-            dst_addr_type,
-            dst_addr,
-            content,
-        )
-
-        
-
-    
 
 def tcp_modules_helper(exp):
     """
@@ -883,3 +835,97 @@ def _get_start_stop_time_for_ss(
         )
 
     return ss_schedules
+
+
+qdisc = 'lbf'
+
+class LbfObj:
+    def __init__(self, min_delay, max_delay, hops):
+        # define main variables you want to store and use
+        self.c_min_delay = int(min_delay)
+        self.c_max_delay = int(max_delay)
+        self.hops = int(hops)
+        self.fib_delay = 0
+
+    def get_lbf_params(self):
+        return [self.c_min_delay, self.c_max_delay, 0, self.hops]
+
+    def set_lbf_params(self, min_delay, max_delay, hops):
+        self.c_min_delay = int(min_delay)
+        self.c_max_delay = int(max_delay)
+        self.hops = int(hops)
+
+
+class lbf_forwarder:
+    # define start of forwarder. the interval and pkt count.
+    def __init__(self, srcNodes, dstNodes, src_addr_type, dst_addr_type, timeout, pkt_count):
+        self.netObj = Setup()
+        self.netObj.setup_topology()
+        self.srcNodes = srcNodes
+        self.srcNode = []
+        self.dstNode = []
+        self.pkt_count = pkt_count
+        self.timeout = timeout
+        self.src_addr_type = src_addr_type
+        self.dst_addr_type = dst_addr_type
+        for src in srcNodes:
+            self.srcNode.append(self.netObj.info_dict[src]["node"])
+        for dst in dstNodes:
+            self.dstNode.append(self.netObj.info_dict[dst]["node"])
+        recVerbose = True
+
+        self.netObj.start_receiver(
+            timeout=self.timeout, nodeList=self.dstNode, verbose=recVerbose
+        )
+        self.start_forwarder()
+
+
+
+    def pkt_fill(self, index):
+        START = "pkt# %d " % (index)
+        remaining = 100 - len(START)   # hard coded packet size
+        chars = string.ascii_uppercase + string.digits
+        return START + "".join(random.choice(chars) for _ in range(remaining))
+
+    def create_non_lbf_pkt(self, sender, srcNode, dstNode, content):
+        src_addr_type = random.choice(self.src_addr_type)
+        dst_addr_type = random.choice(self.dst_addr_type)
+        src_addr = self.netObj.info_dict[srcNode.name][src_addr_type]
+        dst_addr = self.netObj.info_dict[dstNode.name][dst_addr_type]
+        sender.make_packet(
+            src_addr_type,
+            src_addr,
+            dst_addr_type,
+            dst_addr,
+            content,
+        )
+
+
+    def sender_process (self, srcNode):
+        with srcNode:
+            dstNode = self.dstNode
+            if (srcNode in dstNode):
+                dstNode.remove(srcNode)
+            if dstNode:
+                srcIf = srcNode._interfaces[0].name
+            
+
+                for index in range(max(int(self.pkt_count/len(self.srcNodes)),1)):
+                    rand_dst_node = random.choice(dstNode)
+                  
+              
+                    sender = Sender()
+                   
+                    payload = self.pkt_fill(index)
+                    
+                    self.create_non_lbf_pkt(sender, srcNode, rand_dst_node, payload)
+                    
+
+                    sender.send_packet(iface=srcIf, show_pkt=True)
+    
+    def start_forwarder(self):
+        for srcNode in self.srcNode:
+            sender_proc = multiprocessing.Process(target=self.sender_process,args=(srcNode,))
+            sender_proc.start()
+
+

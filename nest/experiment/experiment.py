@@ -179,10 +179,10 @@ class NonLbfFlow:
     @input_validator
     def __init__(
         self,
-        src_node: str,
-        dst_node: str,
-        src_addr_type: str,
-        dst_addr_type: str,
+        src_node: list,
+        dst_node: list,
+        src_addr_type: list,
+        dst_addr_type: list,
         timeout:int,
         pkt_count: int,
     ):
@@ -400,8 +400,11 @@ class Experiment:
         print()
         logger.info("Running experiment %s ", self.name)
         Pack.init(self.name)
+        # if non lbf flows exist then
         run_experiment(self)
 
     def __repr__(self):
         classname = self.__class__.__name__
         return f"{classname}({self.name!r})"
+
+
