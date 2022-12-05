@@ -8,8 +8,6 @@
 # The destination address type is ipv6
 
 
-
-
 # TOPOLOGY
 #
 #               r2 ---- h2
@@ -37,22 +35,23 @@ if not os.path.isfile("LBF-testing-pcap/test1-5p-lbf.pcap"):
 timeout = 10
 
 setup_obj = Setup(resultsFolder="Test3")
-bottleneck_queue_len=100
+bottleneck_queue_len = 100
 setup_obj.setup_topology(buildLbf=False, bottleneck_queue_len=bottleneck_queue_len)
-setup_obj.start_receiver(timeout= timeout, verbose=2)
-setup_obj.get_tc_stats(interfaces=["r1_r2"],timeout=timeout)
+setup_obj.start_receiver(timeout=timeout, verbose=2)
+setup_obj.get_tc_stats(interfaces=["r1_r2"], timeout=timeout)
 # setup_obj.generate_pcap(interfaces=["h1_r1"], timeout=4)
 # num_packets = [10,20,50,100,200,500,1000, 2000]
 # speeds = [0.001, 0.01, 0.1, 1, 10 ,100 , 500, 1000]
 num_packets = [100]
-speeds= [1, 2, 3, 4, 5]
+speeds = [1, 2, 3, 4, 5]
 failsafe_timeout = 10
 for speed in speeds:
     for num_packet in num_packets:
         with setup_obj.h1:
-            num_packet = int(num_packet/5)
-            os.system(f"sudo timeout {failsafe_timeout} tcpreplay --mbps={speed} -q --loop={num_packet} -i 'h1_r1' LBF-testing-pcap/test1-5p-lbf.pcap ")
-    
+            num_packet = int(num_packet / 5)
+            os.system(
+                f"sudo timeout {failsafe_timeout} tcpreplay --mbps={speed} -q --loop={num_packet} -i 'h1_r1' LBF-testing-pcap/test1-5p-lbf.pcap "
+            )
+
 
 setup_obj.show_stats()
-

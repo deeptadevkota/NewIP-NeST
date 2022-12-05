@@ -7,8 +7,6 @@
 # The destination address type is ipv6
 
 
-
-
 # TOPOLOGY
 #
 #               r2 ---- h2
@@ -43,8 +41,10 @@ with setup_obj.h1:
     # sender_obj.insert_contract(
     #     contract_type="latency_based_forwarding", params=[0, 800, 300, 3]
     # )  # min_delay, max_delay, fib_todelay, fib_tohops
-    lbf_contract = LatencyBasedForwarding(min_delay = 0, max_delay = 800, fib_todelay = 0, fib_tohops = 3)
-    sender_obj.set_contract ([lbf_contract])
+    lbf_contract = LatencyBasedForwarding(
+        min_delay=0, max_delay=800, fib_todelay=0, fib_tohops=3
+    )
+    sender_obj.set_contract([lbf_contract])
     sender_obj.send_packet(iface="h1_r1", show_pkt=True)
 
 # setup_obj.show_stats()

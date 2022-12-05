@@ -116,15 +116,17 @@ class Sender:
                 self.contracts = self.contracts / Ping(
                     code=ping_code, timestamp=params[1]
                 )
-    def set_contract(self, contracts = []):
-        if (contracts is not []):
-            if (self.contracts is None):
+
+    def set_contract(self, contracts=[]):
+        if contracts is not []:
+            if self.contracts is None:
                 self.contracts = contracts[0]
                 contracts.remove(contracts[0])
             for contract in contracts:
                 self.contracts = self.contracts / contract
         else:
-            print ("[Warning] : No contract to set")
+            print("[Warning] : No contract to set")
+
     def send_packet(self, iface, show_pkt=False, count=1):
         self.offset = NewIPOffset()
         self.eth = Ether()
@@ -193,9 +195,10 @@ class LegacyIpSender:
 
 
 def show_packet(pkt):
-    print("=" * 40)
-    print("at sender egress")
-    print("-" * 40)
-    pkt.show()
-    print("=" * 40)
-    print()
+    pass
+    # print("=" * 40)
+    # print("at sender egress")
+    # print("-" * 40)
+    # pkt.show()
+    # print("=" * 40)
+    # print()

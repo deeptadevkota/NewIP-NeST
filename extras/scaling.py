@@ -17,7 +17,7 @@ import os
 from New_IP.receiver import Receiver
 from New_IP.sender import Sender
 
-qdisc = 'lbf'
+qdisc = "lbf"
 
 config.set_value("assign_random_names", False)
 # config.set_value('delete_namespaces_on_termination', False)

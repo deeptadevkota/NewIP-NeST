@@ -179,11 +179,11 @@ class NonLbfFlow:
     @input_validator
     def __init__(
         self,
-        src_node: list,
-        dst_node: list,
-        src_addr_type: list,
-        dst_addr_type: list,
-        timeout:int,
+        src_node: Node,
+        dst_node: Node,
+        src_addr_type: str,
+        dst_addr_type: str,
+        timeout: int,
         pkt_count: int,
     ):
         self.src_node = src_node
@@ -206,8 +206,9 @@ class NonLbfFlow:
             self.src_addr_type,
             self.dst_addr_type,
             self.timeout,
-            self.pkt_count
+            self.pkt_count,
         ]
+
 
 class Experiment:
     """Handles experiment to be run on topology"""
@@ -217,7 +218,7 @@ class Experiment:
     new_cong_algos = []
 
     @input_validator
-    def __init__(self, name: str):
+    def __init__(self, name: str, non_lbf_flows=[], topo=None):
         """
         Create experiment
 
@@ -229,10 +230,11 @@ class Experiment:
         self.name = name
         self.flows = []
         self.coap_flows = []
-        self.non_lbf_flows = []
+        self.non_lbf_flows = non_lbf_flows
         self.node_stats = []
         self.qdisc_stats = []
         self.tcp_module_params = defaultdict(dict)
+        self.topo = topo
 
     def add_flow(self, flow):
         """
@@ -345,9 +347,8 @@ class Experiment:
         """
         self.coap_flows.append(copy.deepcopy(coap_flow))
 
-    @input_validator
-    def add_non_lbf_flow(self, non_lbf_flow: NonLbfFlow):
-        self.non_lbf_flows.append(copy.deepcopy(non_lbf_flow))
+    # def add_non_lbf_flow(self, non_lbf_flow: NonLbfFlow):
+    #     self.non_lbf_flows.append(copy.deepcopy(non_lbf_flow))
 
     @input_validator
     def require_qdisc_stats(self, interface: BaseInterface, stats=""):
@@ -406,5 +407,3 @@ class Experiment:
     def __repr__(self):
         classname = self.__class__.__name__
         return f"{classname}({self.name!r})"
-
-

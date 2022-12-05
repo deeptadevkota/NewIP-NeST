@@ -6,8 +6,6 @@
 # The destination address type is ipv6
 
 
-
-
 # TOPOLOGY
 #
 #               r2 ---- h2

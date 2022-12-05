@@ -47,8 +47,12 @@ from .plotter.tc import plot_tc
 from .plotter.ping import plot_ping
 from ..engine.util import is_dependency_installed, is_package_installed
 
+import New_IP
+
+print(New_IP.__file__)
 from New_IP.setup import Setup
 from New_IP.sender import Sender
+
 
 logger = logging.getLogger(__name__)
 if not any(isinstance(filter, DepedencyCheckFilter) for filter in logger.filters):
@@ -59,6 +63,7 @@ if not any(isinstance(filter, DepedencyCheckFilter) for filter in logger.filters
 # pylint: disable=too-many-locals, too-many-branches
 # pylint: disable=too-many-statements, invalid-name
 def run_experiment(exp):
+
     """
     Run experiment
 
@@ -66,7 +71,37 @@ def run_experiment(exp):
     -----------
     exp : Experiment
         The experiment attributes
+
     """
+
+    dstnodes_names = []
+    full_list_nodes = []
+    
+    for non_lbf_flow in exp.non_lbf_flows:
+        [
+            srcNode,
+            dstNode,
+            src_addr_type,
+            dst_addr_type,
+            timeout,
+            pkt_count,
+        ] = non_lbf_flow._get_props()
+        full_list_nodes.append(dstNode)
+        if dstNode.name not in dstnodes_names:
+            dstnodes_names.append(dstNode.name)
+        
+    dstNodes = []
+    for node in full_list_nodes:
+        if node.name in dstnodes_names:
+            dstNodes.append(node)
+            dstnodes_names.remove(node.name)
+    
+    receiver_procs = []
+    print("Reciever supposed to start at BRO PLEASE: ", dstNodes)
+    if exp.non_lbf_flows:
+        receiver_procs = exp.topo.start_receiver(
+            timeout=30, nodeList=dstNodes, verbose=True
+        )
 
     tcp_modules_helper(exp)
     tools = ["netperf", "ss", "tc", "iperf3", "ping", "coap", "server"]
@@ -178,21 +213,18 @@ def run_experiment(exp):
     for non_lbf_flow in exp.non_lbf_flows:
 
         [
-            srcNodes,
-            dstNodes,
+            srcNode,
+            dstNode,
             src_addr_type,
             dst_addr_type,
             timeout,
-            pkt_count
-         
-        ] = non_lbf_flow._get_props() 
+            pkt_count,
+        ] = non_lbf_flow._get_props()
 
-        
-        exp_end_t = max(exp_end_t, timeout)
-
-        lbf_forwarder_obj = lbf_forwarder(srcNodes, dstNodes, src_addr_type, dst_addr_type, timeout, pkt_count)
-
-        print("upto here printed")
+        exp_end_t = max(exp_end_t, 30)
+        lbf_flow_generator_obj = lbf_flow_generator(
+            srcNode, dstNode, src_addr_type, dst_addr_type, 30, pkt_count, exp.topo
+        )
 
     if ss_required:
         ss_filter = " and ".join(ss_filters)
@@ -238,6 +270,8 @@ def run_experiment(exp):
 
         logger.info("Experiment %s complete!", exp.name)
 
+        for procs in receiver_procs:
+            procs.join()
     except KeyboardInterrupt:
         logger.warning(
             "Experiment %s forcefully stopped. The results obtained maybe incomplete!",
@@ -245,7 +279,6 @@ def run_experiment(exp):
         )
     finally:
         cleanup()
-
 
 
 def tcp_modules_helper(exp):
@@ -323,9 +356,12 @@ def run_workers(workers):
     for worker in workers:
         worker.start()
 
+    print("********************* STARTED ALL WORKERS **************************")
     # wait for all the workers to finish
     for worker in workers:
         worker.join()
+
+    print("********************* ALL WORKERS JOINED **************************")
 
 
 def setup_plotter_workers():
@@ -388,6 +424,10 @@ def setup_flow_workers(exp_runners, exp_stop_time):
     # Add progress bar process
     if config.get_value("show_progress_bar"):
         workers.extend([Process(target=progress_bar, args=(exp_stop_time,))])
+
+    print("&&&&&&&&&&&&&&&&&&&&&&")
+    print(workers)
+    print("%%%%%%%%%%%%%%%%%%%%%%%")
 
     return workers
 
@@ -768,7 +808,7 @@ def progress_bar(stop_time, precision=1):
     """
     try:
         print()
-        for _ in tqdm(range(0, stop_time, precision), desc="Experiment Progress"):
+        for _ in tqdm(range(0, stop_time, precision), desc="Experiment Progress - 1"):
             sleep(precision)
         print()
     except KeyboardInterrupt:
@@ -837,7 +877,8 @@ def _get_start_stop_time_for_ss(
     return ss_schedules
 
 
-qdisc = 'lbf'
+qdisc = "lbf"
+
 
 class LbfObj:
     def __init__(self, min_delay, max_delay, hops):
@@ -856,76 +897,56 @@ class LbfObj:
         self.hops = int(hops)
 
 
-class lbf_forwarder:
+class lbf_flow_generator:
     # define start of forwarder. the interval and pkt count.
-    def __init__(self, srcNodes, dstNodes, src_addr_type, dst_addr_type, timeout, pkt_count):
-        self.netObj = Setup()
-        self.netObj.setup_topology()
-        self.srcNodes = srcNodes
-        self.srcNode = []
-        self.dstNode = []
+    def __init__(
+        self, srcNode, dstNode, src_addr_type, dst_addr_type, timeout, pkt_count, netObj
+    ):
+        self.netObj = netObj
+        self.srcNode = srcNode
+        self.dstNode = dstNode
         self.pkt_count = pkt_count
         self.timeout = timeout
         self.src_addr_type = src_addr_type
         self.dst_addr_type = dst_addr_type
-        for src in srcNodes:
-            self.srcNode.append(self.netObj.info_dict[src]["node"])
-        for dst in dstNodes:
-            self.dstNode.append(self.netObj.info_dict[dst]["node"])
-        recVerbose = True
-
-        self.netObj.start_receiver(
-            timeout=self.timeout, nodeList=self.dstNode, verbose=recVerbose
-        )
         self.start_forwarder()
-
-
 
     def pkt_fill(self, index):
         START = "pkt# %d " % (index)
-        remaining = 100 - len(START)   # hard coded packet size
+        remaining = 100 - len(START)  # hard coded packet size
         chars = string.ascii_uppercase + string.digits
         return START + "".join(random.choice(chars) for _ in range(remaining))
 
     def create_non_lbf_pkt(self, sender, srcNode, dstNode, content):
-        src_addr_type = random.choice(self.src_addr_type)
-        dst_addr_type = random.choice(self.dst_addr_type)
-        src_addr = self.netObj.info_dict[srcNode.name][src_addr_type]
-        dst_addr = self.netObj.info_dict[dstNode.name][dst_addr_type]
+        # src_addr_type = random.choice(self.src_addr_type)
+        # dst_addr_type = random.choice(self.dst_addr_type)
+        src_addr = self.netObj.info_dict[srcNode.name][self.src_addr_type]
+        dst_addr = self.netObj.info_dict[dstNode.name][self.dst_addr_type]
         sender.make_packet(
-            src_addr_type,
+            self.src_addr_type,
             src_addr,
-            dst_addr_type,
+            self.dst_addr_type,
             dst_addr,
             content,
         )
 
-
-    def sender_process (self, srcNode):
+    def sender_process(self, srcNode):
         with srcNode:
-            dstNode = self.dstNode
-            if (srcNode in dstNode):
-                dstNode.remove(srcNode)
-            if dstNode:
-                srcIf = srcNode._interfaces[0].name
-            
+            # dstNode = self.dstNode
+            # if (srcNode in dstNode):
+            #     dstNode.remove(srcNode)
+            # if dstNode:
+            srcIf = srcNode._interfaces[0].name
 
-                for index in range(max(int(self.pkt_count/len(self.srcNodes)),1)):
-                    rand_dst_node = random.choice(dstNode)
-                  
-              
-                    sender = Sender()
-                   
-                    payload = self.pkt_fill(index)
-                    
-                    self.create_non_lbf_pkt(sender, srcNode, rand_dst_node, payload)
-                    
+            for index in range(max(int(self.pkt_count), 1)):
+                # rand_dst_node = random.choice(dstNode)
+                sender = Sender()
+                payload = self.pkt_fill(index)
+                self.create_non_lbf_pkt(sender, srcNode, self.dstNode, payload)
+                sender.send_packet(iface=srcIf, show_pkt=True)
 
-                    sender.send_packet(iface=srcIf, show_pkt=True)
-    
     def start_forwarder(self):
-        for srcNode in self.srcNode:
-            sender_proc = multiprocessing.Process(target=self.sender_process,args=(srcNode,))
-            sender_proc.start()
-
-
+        sender_proc = multiprocessing.Process(
+            target=self.sender_process, args=(self.srcNode,)
+        )
+        sender_proc.start()

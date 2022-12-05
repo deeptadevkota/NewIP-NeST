@@ -6,11 +6,8 @@
 # by default the the src is h1 and dst is h2
 # the default packet count is 1
 # the default source and destination type is ipv4
- 
- 
- 
- 
- 
+
+
 # TOPOLOGY
 #
 #               r2 ---- h2
@@ -31,7 +28,6 @@ from New_IP.sender import Sender
 from New_IP.newip_hdr import Ping
 
 
-
 class ping_application:
     def __init__(self):
         self.set_args()
@@ -45,8 +41,8 @@ class ping_application:
         recVerbose = True
 
         self.netObj.start_receiver(
-                timeout=self.timeout, nodeList=[self.dstNode], verbose=recVerbose
-            )
+            timeout=self.timeout, nodeList=[self.dstNode], verbose=recVerbose
+        )
         self.start_forwarder()
 
     def set_args(self):
@@ -96,7 +92,7 @@ class ping_application:
             default=False,
             help="Show Packet",
         )
-    
+
     def parse_args(self):
         # Read arguments from the command line
         args = self.parser.parse_args()
@@ -109,29 +105,28 @@ class ping_application:
         self.timeout = args.timeout
         self.showPacket = args.show_packet
 
-
     def create_ping_pkt(self):
         self.sender.make_packet(
             self.src_addr_type, self.src_addr, self.dst_addr_type, self.dst_addr, "PING"
         )
         sending_ts = time.time_ns() // 1000000
         ping_contract = Ping(code=0, timestamp=sending_ts)
-        self.sender.set_contract ([ping_contract])
-
+        self.sender.set_contract([ping_contract])
 
     def start_forwarder(self):
 
         self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
         self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
 
-        self.netObj.start_receiver(timeout=self.timeout, nodeList=[self.srcNode], verbose=True)
-        
+        self.netObj.start_receiver(
+            timeout=self.timeout, nodeList=[self.srcNode], verbose=True
+        )
+
         with self.srcNode:
             self.sender = Sender()
             for index in range(self.pktCount):
                 self.create_ping_pkt()
                 self.sender.send_packet(iface=self.srcIf, show_pkt=self.showPacket)
-
 
 
 ping_application_obj = ping_application()

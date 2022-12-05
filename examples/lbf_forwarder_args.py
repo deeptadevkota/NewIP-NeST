@@ -1,8 +1,11 @@
 import argparse
+
+
 class lbf_forwarder_args:
     def __init__(self):
         self.set_args()
         self.parse_args()
+
     def set_args(self):
         self.parser = argparse.ArgumentParser()
         # Add long and short argument
@@ -162,31 +165,32 @@ class lbf_forwarder_args:
             default=10,
             help="print stats after every given second, use with --tcp-replay=true",
         )
+
     def parse_args(self):
         # Read arguments from the command line
         args = self.parser.parse_args()
         valid_address_types = ["ipv4", "ipv6", "8bit"]
         self.src_addr_type = list(set(args.src_type))
         for addr_type in self.src_addr_type:
-            if (addr_type not in valid_address_types):
-                self.parser.error ("src address should be from ipv4, ipv6 or 8bit")
+            if addr_type not in valid_address_types:
+                self.parser.error("src address should be from ipv4, ipv6 or 8bit")
 
         self.dst_addr_type = args.dst_type
         for addr_type in self.dst_addr_type:
-            if (addr_type not in valid_address_types):
-                self.parser.error ("dst address should be from ipv4, ipv6 or 8bit")
+            if addr_type not in valid_address_types:
+                self.parser.error("dst address should be from ipv4, ipv6 or 8bit")
 
         valid_hosts = ["h1", "h2", "h3"]
         self.src = list(set(args.src))
         for host in self.src:
-            if (host not in valid_hosts):
-                self.parser.error ("dst address should be from h1, h2 or h3")
+            if host not in valid_hosts:
+                self.parser.error("dst address should be from h1, h2 or h3")
 
         self.dst = list(set(args.dst))
         for host in self.dst:
-            if (host not in valid_hosts):
-                self.parser.error ("dst address should be from h1, h2 or h3")
-        if ((args.lbf_contract is not None) and ((len(args.lbf_contract) % 2) != 0)):
+            if host not in valid_hosts:
+                self.parser.error("dst address should be from h1, h2 or h3")
+        if (args.lbf_contract is not None) and ((len(args.lbf_contract) % 2) != 0):
             self.parser.error(
                 "Either give no values for contract, or multiple of two, not {}.".format(
                     len(args.lbf_contract)
@@ -198,13 +202,13 @@ class lbf_forwarder_args:
         self.legacy_ip = args.legacy_ip
         self.no_lbf = args.no_lbf
         self.packet_types = []
-        if (self.ping):
+        if self.ping:
             self.packet_types.append("ping")
-        if (self.legacy_ip):
+        if self.legacy_ip:
             self.packet_types.append("li")
-        if(self.lbfList != None):
+        if self.lbfList != None:
             self.packet_types.append("lbf")
-        if (self.no_lbf or self.packet_types == []):
+        if self.no_lbf or self.packet_types == []:
             self.packet_types.append("nolbf")
         self.timeout = args.timeout
         self.showPacket = args.show_packet

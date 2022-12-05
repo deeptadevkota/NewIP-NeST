@@ -26,3 +26,7 @@ tcpdump: listening on h1_r1, link-type EN10MB (Ethernet), snapshot length 262144
 1 packet captured
 1 packet received by filter
 0 packets dropped by kernel
+tcpdump: listening on h1_r1, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+1 packet captured
+1 packet received by filter
+0 packets dropped by kernel

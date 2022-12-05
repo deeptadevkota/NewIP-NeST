@@ -4,20 +4,21 @@ import json
 import re
 import matplotlib.pyplot as plt
 
+
 class tc_stats:
-    def __init__(self,node,interface, duration, FOLDER = ""):
+    def __init__(self, node, interface, duration, FOLDER=""):
         self.FOLDER = FOLDER
         if self.FOLDER != "":
-            self.FOLDER =  self.FOLDER +"/tc-stats"
+            self.FOLDER = self.FOLDER + "/tc-stats"
         else:
-            self.FOLDER =  "../tc-stats"
-        self.FOLDER = self.make_folder(self.FOLDER,True)
+            self.FOLDER = "../tc-stats"
+        self.FOLDER = self.make_folder(self.FOLDER, True)
         self.get_raw_stats_tc(interface, duration)
         aggregate_stats, handle = self.parse_raw_stats()
-        self.FOLDER = self.FOLDER + f'/{node}-{interface}'
+        self.FOLDER = self.FOLDER + f"/{node}-{interface}"
         self.FOLDER = self.make_folder(self.FOLDER, False)
 
-        self._plot_tc_stats(self.FOLDER,aggregate_stats[handle], node, interface)
+        self._plot_tc_stats(self.FOLDER, aggregate_stats[handle], node, interface)
 
     def make_folder(self, exp_name, add_timestamp=True):
         if add_timestamp:
@@ -32,7 +33,6 @@ class tc_stats:
     def dump_plot(self, FOLDER, subfolder, filename, fig):
         path = os.path.join(FOLDER, filename)
         fig.savefig(path)
-
 
     def simple_plot(self, title, x_list, y_list, x_label, y_label, legend_string=None):
         fig = plt.figure()
@@ -66,8 +66,7 @@ class tc_stats:
 
         return (qdisc, timestamp, stats_params)
 
-
-    def _plot_tc_stats(self, FOLDER,stats, node, interface):
+    def _plot_tc_stats(self, FOLDER, stats, node, interface):
         values = self._extract_from_tc_stats(stats, node, interface)
         if values is None:
             return
@@ -83,17 +82,17 @@ class tc_stats:
                 legend_string=f"Interface {interface} in {node}",
             )
             filename = f"{node}_{interface}_{qdisc}_{param}.png"
-            self.dump_plot(FOLDER,"tc", filename, fig)
+            self.dump_plot(FOLDER, "tc", filename, fig)
             plt.close(fig)
 
-    def get_raw_stats_tc(self,interface,duration):
+    def get_raw_stats_tc(self, interface, duration):
         comm = f"timeout {duration} bash ../extras/tc.sh {interface} {duration}  >> '{self.FOLDER}/output.json' 2>&1"
         os.system(comm)
         time.sleep(duration)
 
     def parse_raw_stats(self):
-        with open(f'{self.FOLDER}/output.json') as f:
-            stats = str(f.readlines()).split('---')
+        with open(f"{self.FOLDER}/output.json") as f:
+            stats = str(f.readlines()).split("---")
             f.seek(0)
             raw_stats = f.read().split("---")
         f.close()

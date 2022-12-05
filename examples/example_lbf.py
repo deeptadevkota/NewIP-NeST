@@ -8,8 +8,6 @@
 # The destination address type is ipv6
 
 
-
-
 # TOPOLOGY
 #
 #               r2 ---- h2
@@ -25,7 +23,6 @@
 from New_IP.setup import Setup
 from New_IP.sender import Sender
 from New_IP.newip_hdr import LatencyBasedForwarding
-
 
 
 setup_obj = Setup()
@@ -46,8 +43,10 @@ with setup_obj.h1:
     # sender_obj.insert_contract(
     #     contract_type="latency_based_forwarding", params=[500, 800, 300, 3]
     # )  # min_delay, max_delay, fib_todelay, fib_tohops
-    lbf_contract = LatencyBasedForwarding(min_delay = 500, max_delay = 800, fib_todelay = 0, fib_tohops = 3)
-    sender_obj.set_contract ([lbf_contract])
+    lbf_contract = LatencyBasedForwarding(
+        min_delay=500, max_delay=800, fib_todelay=0, fib_tohops=3
+    )
+    sender_obj.set_contract([lbf_contract])
     sender_obj.send_packet(iface="h1_r1")
 
 # setup_obj.show_stats()

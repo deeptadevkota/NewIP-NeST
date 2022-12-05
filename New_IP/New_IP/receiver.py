@@ -91,15 +91,22 @@ class Receiver:
             if self.verbose >= 3:
                 print(pkt_details)
 
-    def __init__(self, node, verbose=1, folder = ""):
+    def __init__(self, node, verbose=1, folder=""):
         self.verbose = verbose
         conf.route.resync()
         conf.sniff_promisc = 0
         self.node = node
         if folder != "":
-            self.filename = folder + "/receiver_stats_"+time.strftime("%d-%m-%Y-%H:%M:%S")+".txt"
-        else: 
-            self.filename = "receiver_stats_"+time.strftime("%d-%m-%Y-%H:%M:%S")+".txt"
+            self.filename = (
+                folder
+                + "/receiver_stats_"
+                + time.strftime("%d-%m-%Y-%H:%M:%S")
+                + ".txt"
+            )
+        else:
+            self.filename = (
+                "receiver_stats_" + time.strftime("%d-%m-%Y-%H:%M:%S") + ".txt"
+            )
 
     def start(self, iface, timeout=20):
         if not isinstance(iface, str):
