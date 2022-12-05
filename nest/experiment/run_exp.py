@@ -356,12 +356,12 @@ def run_workers(workers):
     for worker in workers:
         worker.start()
 
-    print("********************* STARTED ALL WORKERS **************************")
+    # print("********************* STARTED ALL WORKERS **************************")
     # wait for all the workers to finish
     for worker in workers:
         worker.join()
 
-    print("********************* ALL WORKERS JOINED **************************")
+    # print("********************* ALL WORKERS JOINED **************************")
 
 
 def setup_plotter_workers():
@@ -425,9 +425,9 @@ def setup_flow_workers(exp_runners, exp_stop_time):
     if config.get_value("show_progress_bar"):
         workers.extend([Process(target=progress_bar, args=(exp_stop_time,))])
 
-    print("&&&&&&&&&&&&&&&&&&&&&&")
-    print(workers)
-    print("%%%%%%%%%%%%%%%%%%%%%%%")
+    # print("&&&&&&&&&&&&&&&&&&&&&&")
+    # print(workers)
+    # print("%%%%%%%%%%%%%%%%%%%%%%%")
 
     return workers
 

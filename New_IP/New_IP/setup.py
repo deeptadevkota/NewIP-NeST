@@ -48,7 +48,7 @@ def tc_stats_proc(node, interface, timeout, folder):
 
 
 def receiver_proc(node, iface, timeout, verbose=True, folder=""):
-    print("HI HELLO I IN RECIEVER PROC****")
+    # print("HI HELLO I IN RECIEVER PROC****")
     receiver_obj = Receiver(node, verbose, folder)
     receiver_obj.start(iface=iface, timeout=timeout)
 
@@ -168,8 +168,8 @@ class Setup:
         for node in nodeList:
             for interface in node._interfaces:
                 with node:
-                    logging.error("*********** Reciever Procs Started *********")
-                    print("*********** Reciever Procs Started *********")
+                    # logging.error("*********** Reciever Procs Started *********")
+                    # print("*********** Reciever Procs Started *********")
                     try:
                         receiver_process = multiprocessing.Process(
                             target=receiver_proc,
@@ -182,11 +182,11 @@ class Setup:
                             ),
                         )
                     except:
-                        print("NAH")
+                        print("receiver process error")
                     receiver_process.start()
                     receiver_processes.append(receiver_process)
-        print("*********** Reciever Procs *********")
-        print(receiver_processes)
+        # print("*********** Reciever Procs *********")
+        # print(receiver_processes)
         return receiver_processes
 
         # Ensure routers and receivers have started
