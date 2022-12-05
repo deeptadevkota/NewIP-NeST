@@ -97,7 +97,6 @@ def run_experiment(exp):
             dstnodes_names.remove(node.name)
     
     receiver_procs = []
-    print("Reciever supposed to start at BRO PLEASE: ", dstNodes)
     if exp.non_lbf_flows:
         receiver_procs = exp.topo.start_receiver(
             timeout=30, nodeList=dstNodes, verbose=True
