@@ -238,11 +238,11 @@ def setup_router(node, interfaces):
     with node:
         for interface in interfaces:
             os.system(
-                "./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev "
+                "./New_IP/xdp/newip_router/xdp_loader --progsec xdp_router --filename ./New_IP/xdp/newip_router/xdp_prog_kern.o --dev "
                 + interface.name
             )
             os.system(
-                "sudo ./xdp/newip_router/xdp_prog_user --filename "
+                "sudo ./New_IP/xdp/newip_router/xdp_prog_user --filename "
                 + route
                 + " -d "
                 + interface.name
@@ -251,7 +251,7 @@ def setup_router(node, interfaces):
             os.system(
                 "tc filter add dev "
                 + interface.name
-                + " ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router"
+                + " ingress bpf da obj ./New_IP/xdp/newip_router/tc_prog_kern.o sec tc_router"
             )
             os.system("tc qdisc replace dev " + interface.name + " root " + qdisc)
             tcpdump_process = multiprocessing.Process(
@@ -264,7 +264,7 @@ def setup_host(node, interfaces):
     with node:
         for interface in interfaces:
             os.system(
-                "./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev "
+                "./New_IP/xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./New_IP/xdp/newip_router/xdp_prog_kern.o --dev "
                 + interface.name
             )
             os.system("tc qdisc replace dev " + interface.name + " root " + qdisc)
