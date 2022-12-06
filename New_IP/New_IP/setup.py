@@ -394,3 +394,14 @@ class Setup:
         with self.r3:
             print("--r3_h3--")
             os.system("tc -s qdisc show dev r3_h3")
+
+
+
+
+
+
+
+
+    
+
+

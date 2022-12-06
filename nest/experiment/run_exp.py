@@ -49,9 +49,10 @@ from .plotter.tc import plot_tc
 from .plotter.ping import plot_ping
 from ..engine.util import is_dependency_installed, is_package_installed
 
-import New_IP
 
-print(New_IP.__file__)
+from New_IP.setup import *
+
+# print(New_IP.__file__)
 
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,26 @@ if not any(isinstance(filter, DepedencyCheckFilter) for filter in logger.filters
 # pylint: disable=too-many-locals, too-many-branches
 # pylint: disable=too-many-statements, invalid-name
 
+
+def start_receiver(timeout=5, verbose=True, nodeList=[]):
+    receiver_processes = []
+    for node in nodeList:
+        for interface in node._interfaces:
+            with node:
+                try:
+                    receiver_process = multiprocessing.Process(
+                        target=receiver_proc,
+                        args=(
+                            node,
+                            interface,
+                            timeout,
+                            verbose
+                        ),
+                    )
+                except:
+                    print("receiver process error")
+                receiver_process.start()
+                receiver_processes.append(receiver_process)
 
 def run_experiment(exp):
     """
@@ -83,7 +104,9 @@ def run_experiment(exp):
             srcNode,
             dstNode,
             src_addr_type,
+            src_addr,
             dst_addr_type,
+            dst_addr,
             pkt_count,
         ] = non_lbf_flow._get_props()
         full_list_nodes.append(dstNode)
@@ -98,7 +121,7 @@ def run_experiment(exp):
 
     receiver_procs = []
     if exp.non_lbf_flows:
-        receiver_procs = exp.topo.start_receiver(
+        start_receiver(
             nodeList=dstNodes, verbose=True
         )
 
@@ -215,13 +238,15 @@ def run_experiment(exp):
             srcNode,
             dstNode,
             src_addr_type,
+            src_addr,
             dst_addr_type,
+            dst_addr,
             pkt_count,
         ] = non_lbf_flow._get_props()
 
         # exp_end_t = max(exp_end_t, 30)
         lbf_flow_generator_obj = LbfFlowGenerator(
-            srcNode, dstNode, src_addr_type, dst_addr_type, pkt_count, exp.topo
+            srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count
         )
 
     if ss_required:
@@ -890,33 +915,35 @@ qdisc = "lbf"
 class LbfFlowGenerator:
     # define start of forwarder. the interval and pkt count.
     def __init__(
-        self, srcNode, dstNode, src_addr_type, dst_addr_type, pkt_count, netObj
+        self, srcNode, dstNode, src_addr_type,src_addr, dst_addr_type, dst_addr ,pkt_count
     ):
-        self.netObj = netObj
+        # self.netObj = netObj
         self.srcNode = srcNode
         self.dstNode = dstNode
         self.pkt_count = pkt_count
         # self.timeout = timeout
         self.src_addr_type = src_addr_type
         self.dst_addr_type = dst_addr_type
+        self.src_addr = src_addr
+        self.dst_addr = dst_addr
         self.start_forwarder()
 
     def pkt_fill(self, index):
         START = "pkt# %d " % (index)
-        remaining = 100 - len(START)  # hard coded packet size
+        remaining = 100 - len(START)  # packet size = 100
         chars = string.ascii_uppercase + string.digits
         return START + "".join(random.choice(chars) for _ in range(remaining))
 
     def create_non_lbf_pkt(self, sender, srcNode, dstNode, content):
         # src_addr_type = random.choice(self.src_addr_type)
         # dst_addr_type = random.choice(self.dst_addr_type)
-        src_addr = self.netObj.info_dict[srcNode.name][self.src_addr_type]
-        dst_addr = self.netObj.info_dict[dstNode.name][self.dst_addr_type]
+        # src_addr ="10.0.1.2"
+        # dst_addr = "10::3:2"
         sender.make_packet(
             self.src_addr_type,
-            src_addr,
+            self.src_addr,
             self.dst_addr_type,
-            dst_addr,
+            self.dst_addr,
             content,
         )
 
