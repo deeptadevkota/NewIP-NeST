@@ -3,6 +3,8 @@
 
 """Script to be run for running experiments on topology"""
 
+from New_IP.sender import Sender
+from New_IP.setup import Setup
 from multiprocessing import Process
 from collections import namedtuple, defaultdict
 import logging
@@ -50,8 +52,6 @@ from ..engine.util import is_dependency_installed, is_package_installed
 import New_IP
 
 print(New_IP.__file__)
-from New_IP.setup import Setup
-from New_IP.sender import Sender
 
 
 logger = logging.getLogger(__name__)
@@ -62,8 +62,9 @@ if not any(isinstance(filter, DepedencyCheckFilter) for filter in logger.filters
 
 # pylint: disable=too-many-locals, too-many-branches
 # pylint: disable=too-many-statements, invalid-name
-def run_experiment(exp):
 
+
+def run_experiment(exp):
     """
     Run experiment
 
@@ -76,7 +77,7 @@ def run_experiment(exp):
 
     dstnodes_names = []
     full_list_nodes = []
-    
+
     for non_lbf_flow in exp.non_lbf_flows:
         [
             srcNode,
@@ -88,17 +89,17 @@ def run_experiment(exp):
         full_list_nodes.append(dstNode)
         if dstNode.name not in dstnodes_names:
             dstnodes_names.append(dstNode.name)
-        
+
     dstNodes = []
     for node in full_list_nodes:
         if node.name in dstnodes_names:
             dstNodes.append(node)
             dstnodes_names.remove(node.name)
-    
+
     receiver_procs = []
     if exp.non_lbf_flows:
         receiver_procs = exp.topo.start_receiver(
-            timeout=30, nodeList=dstNodes, verbose=True
+            nodeList=dstNodes, verbose=True
         )
 
     tcp_modules_helper(exp)
@@ -218,17 +219,19 @@ def run_experiment(exp):
             pkt_count,
         ] = non_lbf_flow._get_props()
 
-        exp_end_t = max(exp_end_t, 30)
-        lbf_flow_generator_obj = lbf_flow_generator(
-            srcNode, dstNode, src_addr_type, dst_addr_type, 30, pkt_count, exp.topo
+        # exp_end_t = max(exp_end_t, 30)
+        lbf_flow_generator_obj = LbfFlowGenerator(
+            srcNode, dstNode, src_addr_type, dst_addr_type, pkt_count, exp.topo
         )
 
     if ss_required:
         ss_filter = " and ".join(ss_filters)
-        ss_runners = setup_ss_runners(dependencies["ss"], ss_schedules, ss_filter)
+        ss_runners = setup_ss_runners(
+            dependencies["ss"], ss_schedules, ss_filter)
         exp_runners.ss.extend(ss_runners)
 
-    tc_runners = setup_tc_runners(dependencies["tc"], exp.qdisc_stats, exp_end_t)
+    tc_runners = setup_tc_runners(
+        dependencies["tc"], exp.qdisc_stats, exp_end_t)
     exp_runners.tc.extend(tc_runners)
 
     ping_runners = setup_ping_runners(dependencies["ping"], ping_schedules)
@@ -254,7 +257,8 @@ def run_experiment(exp):
         if config.get_value("readme_in_stats_folder"):
             # Copying README.txt to stats folder
             relative_path = os.path.join("info", "README.txt")
-            readme_path = os.path.join(os.path.dirname(__file__), relative_path)
+            readme_path = os.path.join(
+                os.path.dirname(__file__), relative_path)
             Pack.copy_files(readme_path)
 
         if config.get_value("plot_results"):
@@ -302,7 +306,8 @@ def tcp_modules_helper(exp):
                     # the module is already loaded, so store the old parameters
                     # during experiment set these parameters with new values (reset=False)
                     # during cleanup reset these parameters with old values (reset=True)
-                    exp.old_cong_algos[cong_algo] = engine.get_current_params(cong_algo)
+                    exp.old_cong_algos[cong_algo] = engine.get_current_params(
+                        cong_algo)
                     engine.set_tcp_params(cong_algo, params, False)
                 else:
                     # the module will be newly loaded
@@ -373,10 +378,13 @@ def setup_plotter_workers():
     plotters = []
 
     plotters.append(Process(target=plot_ss, args=(SsResults.get_results(),)))
-    plotters.append(Process(target=plot_netperf, args=(NetperfResults.get_results(),)))
-    plotters.append(Process(target=plot_iperf3, args=(Iperf3Results.get_results(),)))
+    plotters.append(Process(target=plot_netperf,
+                    args=(NetperfResults.get_results(),)))
+    plotters.append(Process(target=plot_iperf3,
+                    args=(Iperf3Results.get_results(),)))
     plotters.append(Process(target=plot_tc, args=(TcResults.get_results(),)))
-    plotters.append(Process(target=plot_ping, args=(PingResults.get_results(),)))
+    plotters.append(
+        Process(target=plot_ping, args=(PingResults.get_results(),)))
 
     return plotters
 
@@ -767,7 +775,8 @@ def setup_coap_runners(dependency, flow, destination_nodes):
                     "coap_server_content" in user_options.keys()
                     and user_options["coap_server_content"] != ""
                 ):
-                    server_content = '"' + user_options["coap_server_content"] + '"'
+                    server_content = '"' + \
+                        user_options["coap_server_content"] + '"'
                     server_options = f"-c {server_content}"
                 else:
                     server_options = None
@@ -778,7 +787,8 @@ def setup_coap_runners(dependency, flow, destination_nodes):
             CoAPRunner.run_server(dst_ns, server_options)
 
         # Create the CoAPRunner object
-        coap_runner = CoAPRunner(src_ns, dst_addr, user_options, n_con_msgs, n_non_msgs)
+        coap_runner = CoAPRunner(
+            src_ns, dst_addr, user_options, n_con_msgs, n_non_msgs)
         runners.append(coap_runner)
 
     # If aiocoap is not installed
@@ -877,33 +887,16 @@ def _get_start_stop_time_for_ss(
 qdisc = "lbf"
 
 
-class LbfObj:
-    def __init__(self, min_delay, max_delay, hops):
-        # define main variables you want to store and use
-        self.c_min_delay = int(min_delay)
-        self.c_max_delay = int(max_delay)
-        self.hops = int(hops)
-        self.fib_delay = 0
-
-    def get_lbf_params(self):
-        return [self.c_min_delay, self.c_max_delay, 0, self.hops]
-
-    def set_lbf_params(self, min_delay, max_delay, hops):
-        self.c_min_delay = int(min_delay)
-        self.c_max_delay = int(max_delay)
-        self.hops = int(hops)
-
-
-class lbf_flow_generator:
+class LbfFlowGenerator:
     # define start of forwarder. the interval and pkt count.
     def __init__(
-        self, srcNode, dstNode, src_addr_type, dst_addr_type, timeout, pkt_count, netObj
+        self, srcNode, dstNode, src_addr_type, dst_addr_type, pkt_count, netObj
     ):
         self.netObj = netObj
         self.srcNode = srcNode
         self.dstNode = dstNode
         self.pkt_count = pkt_count
-        self.timeout = timeout
+        # self.timeout = timeout
         self.src_addr_type = src_addr_type
         self.dst_addr_type = dst_addr_type
         self.start_forwarder()
