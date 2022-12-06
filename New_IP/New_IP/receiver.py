@@ -119,7 +119,7 @@ class Receiver:
             timeout=timeout,
         )
         if self.verbose >= 1:
-            print("[INFO] " + str(len(pkts)) + " pkts received at " + self.node.name)
+            print("[INFO] " + str(len(pkts)) + " New-IP pkts received at " + self.node.name)
         if verbose == 2 or verbose >= 4:
             parse = parse_receiver(self.filename)
             parse.read_receiver_file()
