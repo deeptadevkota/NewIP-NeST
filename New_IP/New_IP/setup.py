@@ -31,6 +31,22 @@ from New_IP.tc_stats import tc_stats
 qdisc = "lbf"
 
 
+class NewIP:
+    def __init__(self) -> None:
+        pass
+
+    non_lbf_flows = []
+    topo = None
+
+    def create_topology(self):
+        topo = Setup()
+        topo.setup_topology()
+        self.topo = topo
+
+    def add_non_lbf_flows(self, non_lbf_flow):
+        self.non_lbf_flows.append(copy.deepcopy(non_lbf_flow))
+
+
 def tcpdump_proc(interface, timeout, dirName):
     os.system(
         f"timeout {timeout} tcpdump -i "
