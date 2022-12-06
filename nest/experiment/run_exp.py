@@ -83,7 +83,6 @@ def run_experiment(exp):
             dstNode,
             src_addr_type,
             dst_addr_type,
-            timeout,
             pkt_count,
         ] = non_lbf_flow._get_props()
         full_list_nodes.append(dstNode)
@@ -216,7 +215,6 @@ def run_experiment(exp):
             dstNode,
             src_addr_type,
             dst_addr_type,
-            timeout,
             pkt_count,
         ] = non_lbf_flow._get_props()
 

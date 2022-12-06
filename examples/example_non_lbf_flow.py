@@ -1,13 +1,8 @@
-# SPDX-License-Identifier: GPL-2.0-only
-# Copyright (c) 2019-2022 NITK Surathkal
 
-########################
-# SHOULD BE RUN AS ROOT
-########################
-import copy
 from nest.experiment.experiment import NonLbfFlow
 from nest.experiment import *
 from New_IP.setup import Setup
+import copy
 
 
 class NewIP:
@@ -28,9 +23,13 @@ class NewIP:
 
 newip_obj = NewIP()
 newip_obj.create_topology()
-flow1 = NonLbfFlow(newip_obj.topo.h1, newip_obj.topo.h3, "ipv4", "ipv6", 5, 5)
-flow2 = NonLbfFlow(newip_obj.topo.h1, newip_obj.topo.h2, "ipv4", "ipv6", 5, 10)
-flow3 = NonLbfFlow(newip_obj.topo.h1, newip_obj.topo.h3, "ipv4", "ipv6", 5, 3)
+
+flow1 = NonLbfFlow(src_node=newip_obj.topo.h1, dst_node=newip_obj.topo.h3,
+                   src_addr_type="ipv4", dst_addr_type="ipv6", pkt_count=5)
+flow2 = NonLbfFlow(src_node=newip_obj.topo.h1, dst_node=newip_obj.topo.h2,
+                   src_addr_type="ipv4", dst_addr_type="ipv6", pkt_count=10)
+flow3 = NonLbfFlow(src_node=newip_obj.topo.h1, dst_node=newip_obj.topo.h3,
+                   src_addr_type="ipv6", dst_addr_type="ipv6", pkt_count=3)
 
 
 newip_obj.add_non_lbf_flows(flow1)

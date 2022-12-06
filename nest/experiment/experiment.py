@@ -183,14 +183,12 @@ class NonLbfFlow:
         dst_node: Node,
         src_addr_type: str,
         dst_addr_type: str,
-        timeout: int,
         pkt_count: int,
     ):
         self.src_node = src_node
         self.dst_node = dst_node
         self.src_addr_type = src_addr_type
         self.dst_addr_type = dst_addr_type
-        self.timeout = timeout
         self.pkt_count = pkt_count
 
     def _get_props(self):
@@ -205,7 +203,6 @@ class NonLbfFlow:
             self.dst_node,
             self.src_addr_type,
             self.dst_addr_type,
-            self.timeout,
             self.pkt_count,
         ]
 
