@@ -2,7 +2,7 @@
 from nest.experiment.experiment import NonLbfFlow
 from nest.experiment import *
 from New_IP.setup import Setup
-import copy
+
 
 
 setup_obj = Setup()
@@ -37,7 +37,6 @@ exp = Experiment(name="non-lbf-flow with TCP and UDP  ")
 # Adding New-IP contract less flows
 exp.add_non_lbf_flow(flow1)
 exp.add_non_lbf_flow(flow2)
-
 
 # Adding UDP flow
 exp.add_udp_flow(flow3, target_bandwidth="12mbit")

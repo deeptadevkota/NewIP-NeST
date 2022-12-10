@@ -51,6 +51,7 @@ from ..engine.util import is_dependency_installed, is_package_installed
 
 
 from New_IP.setup import *
+from New_IP.newip_hdr import LatencyBasedForwarding
 
 # print(New_IP.__file__)
 
@@ -64,6 +65,22 @@ if not any(isinstance(filter, DepedencyCheckFilter) for filter in logger.filters
 # pylint: disable=too-many-locals, too-many-branches
 # pylint: disable=too-many-statements, invalid-name
 
+
+class LbfObj:
+    def __init__(self, min_delay, max_delay, hops):
+        # define main variables you want to store and use
+        self.c_min_delay = int(min_delay)
+        self.c_max_delay = int(max_delay)
+        self.hops = int(hops)
+        self.fib_delay = 0
+
+    def get_lbf_params(self):
+        return [self.c_min_delay, self.c_max_delay, 0, self.hops]
+
+    def set_lbf_params(self, min_delay, max_delay, hops):
+        self.c_min_delay = int(min_delay)
+        self.c_max_delay = int(max_delay)
+        self.hops = int(hops)
 
 def start_receiver(timeout=5, verbose=True, nodeList=[]):
     receiver_processes = []
@@ -85,6 +102,9 @@ def start_receiver(timeout=5, verbose=True, nodeList=[]):
                 receiver_process.start()
                 receiver_processes.append(receiver_process)
 
+    return receiver_process
+
+
 def run_experiment(exp):
     """
     Run experiment
@@ -96,9 +116,11 @@ def run_experiment(exp):
 
     """
 
+    
     dstnodes_names = []
     full_list_nodes = []
 
+    # getting the list of nodes where the receiver has to be started
     for non_lbf_flow in exp.non_lbf_flows:
         [
             srcNode,
@@ -113,17 +135,38 @@ def run_experiment(exp):
         if dstNode.name not in dstnodes_names:
             dstnodes_names.append(dstNode.name)
 
+    for lbf_flow in exp.lbf_flows:
+        print("here!!")
+        [
+            srcNode,
+            dstNode,
+            src_addr_type,
+            src_addr,
+            dst_addr_type,
+            dst_addr,
+            pkt_count,
+            min_delay,
+            max_delay,
+            hops
+        ] = lbf_flow._get_props()
+        full_list_nodes.append(dstNode)
+        if dstNode.name not in dstnodes_names:
+            dstnodes_names.append(dstNode.name)
+
     dstNodes = []
     for node in full_list_nodes:
         if node.name in dstnodes_names:
             dstNodes.append(node)
             dstnodes_names.remove(node.name)
 
+    print(dstNodes)
     receiver_procs = []
-    if exp.non_lbf_flows:
+    if exp.non_lbf_flows or exp.lbf_flows:
         start_receiver(
             nodeList=dstNodes, verbose=True
         )
+        # for receiver_proc in receiver_procs:
+        #     receiver_proc.join()
 
     tcp_modules_helper(exp)
     tools = ["netperf", "ss", "tc", "iperf3", "ping", "coap", "server"]
@@ -244,11 +287,33 @@ def run_experiment(exp):
             pkt_count,
         ] = non_lbf_flow._get_props()
 
-        # exp_end_t = max(exp_end_t, 30)
-        lbf_flow_generator_obj = LbfFlowGenerator(
+        # exp_end_t = max(exp_end_t, 300)
+        new_ip_flow_generator_obj = NewIPFlowGenerator(
             srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count
         )
 
+    for lbf_flow in exp.lbf_flows:
+        print("here-1")
+        [
+            srcNode,
+            dstNode,
+            src_addr_type,
+            src_addr,
+            dst_addr_type,
+            dst_addr,
+            pkt_count,
+            min_delay,
+            max_delay,
+            hops
+        ] = lbf_flow._get_props()
+
+        lbf_obj = LbfObj(min_delay, max_delay, hops)
+
+        exp_end_t = max(exp_end_t, 100)
+        new_ip_flow_generator_obj = NewIPFlowGenerator(
+            srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count, lbf_obj
+        )
+    print("******* ", exp_end_t)
     if ss_required:
         ss_filter = " and ".join(ss_filters)
         ss_runners = setup_ss_runners(
@@ -912,20 +977,18 @@ def _get_start_stop_time_for_ss(
 qdisc = "lbf"
 
 
-class LbfFlowGenerator:
-    # define start of forwarder. the interval and pkt count.
+class NewIPFlowGenerator:
     def __init__(
-        self, srcNode, dstNode, src_addr_type,src_addr, dst_addr_type, dst_addr ,pkt_count
+        self, srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count, lbf_obj=None
     ):
-        # self.netObj = netObj
         self.srcNode = srcNode
         self.dstNode = dstNode
         self.pkt_count = pkt_count
-        # self.timeout = timeout
         self.src_addr_type = src_addr_type
         self.dst_addr_type = dst_addr_type
         self.src_addr = src_addr
         self.dst_addr = dst_addr
+        self.lbf_obj = lbf_obj
         self.start_forwarder()
 
     def pkt_fill(self, index):
@@ -934,11 +997,7 @@ class LbfFlowGenerator:
         chars = string.ascii_uppercase + string.digits
         return START + "".join(random.choice(chars) for _ in range(remaining))
 
-    def create_non_lbf_pkt(self, sender, srcNode, dstNode, content):
-        # src_addr_type = random.choice(self.src_addr_type)
-        # dst_addr_type = random.choice(self.dst_addr_type)
-        # src_addr ="10.0.1.2"
-        # dst_addr = "10::3:2"
+    def create_lbf_pkt(self, sender, content):
         sender.make_packet(
             self.src_addr_type,
             self.src_addr,
@@ -946,20 +1005,29 @@ class LbfFlowGenerator:
             self.dst_addr,
             content,
         )
+        
+        if self.lbf_obj is not None:
+            params = self.lbf_obj.get_lbf_params()
+        
+            lbf_contract = LatencyBasedForwarding(
+            min_delay=params[0],
+            max_delay=params[1],
+            fib_todelay=params[2],
+            fib_tohops=params[3],
+            )
+            sender.set_contract([lbf_contract])
 
     def sender_process(self, srcNode):
         with srcNode:
-            # dstNode = self.dstNode
-            # if (srcNode in dstNode):
-            #     dstNode.remove(srcNode)
-            # if dstNode:
             srcIf = srcNode._interfaces[0].name
 
             for index in range(max(int(self.pkt_count), 1)):
-                # rand_dst_node = random.choice(dstNode)
                 sender = Sender()
                 payload = self.pkt_fill(index)
-                self.create_non_lbf_pkt(sender, srcNode, self.dstNode, payload)
+                
+                self.create_lbf_pkt(sender, payload)
+            
+
                 sender.send_packet(iface=srcIf, show_pkt=True)
 
     def start_forwarder(self):
