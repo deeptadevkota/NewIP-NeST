@@ -117,54 +117,7 @@ def run_experiment(exp):
     """
 
     
-    dstnodes_names = []
-    full_list_nodes = []
 
-    # getting the list of nodes where the receiver has to be started
-    for non_lbf_flow in exp.non_lbf_flows:
-        [
-            srcNode,
-            dstNode,
-            src_addr_type,
-            src_addr,
-            dst_addr_type,
-            dst_addr,
-            pkt_count,
-        ] = non_lbf_flow._get_props()
-        full_list_nodes.append(dstNode)
-        if dstNode.name not in dstnodes_names:
-            dstnodes_names.append(dstNode.name)
-
-    for lbf_flow in exp.lbf_flows:
-        print("here!!")
-        [
-            srcNode,
-            dstNode,
-            src_addr_type,
-            src_addr,
-            dst_addr_type,
-            dst_addr,
-            pkt_count,
-            min_delay,
-            max_delay,
-            hops
-        ] = lbf_flow._get_props()
-        full_list_nodes.append(dstNode)
-        if dstNode.name not in dstnodes_names:
-            dstnodes_names.append(dstNode.name)
-
-    dstNodes = []
-    for node in full_list_nodes:
-        if node.name in dstnodes_names:
-            dstNodes.append(node)
-            dstnodes_names.remove(node.name)
-
-    print(dstNodes)
-    receiver_procs = []
-    if exp.non_lbf_flows or exp.lbf_flows:
-        start_receiver(
-            nodeList=dstNodes, verbose=True
-        )
         # for receiver_proc in receiver_procs:
         #     receiver_proc.join()
 
@@ -275,6 +228,54 @@ def run_experiment(exp):
         exp_runners.coap.extend(coap_runners)
         destination_nodes["coap"].add(dst_ns)
 
+    dstnodes_names = []
+    full_list_nodes = []
+
+    # getting the list of nodes where the receiver has to be started
+    for non_lbf_flow in exp.non_lbf_flows:
+        [
+            srcNode,
+            dstNode,
+            src_addr_type,
+            src_addr,
+            dst_addr_type,
+            dst_addr,
+            pkt_count,
+        ] = non_lbf_flow._get_props()
+        full_list_nodes.append(dstNode)
+        if dstNode.name not in dstnodes_names:
+            dstnodes_names.append(dstNode.name)
+
+    for lbf_flow in exp.lbf_flows:
+        [
+            srcNode,
+            dstNode,
+            src_addr_type,
+            src_addr,
+            dst_addr_type,
+            dst_addr,
+            pkt_count,
+            min_delay,
+            max_delay,
+            hops
+        ] = lbf_flow._get_props()
+        full_list_nodes.append(dstNode)
+        if dstNode.name not in dstnodes_names:
+            dstnodes_names.append(dstNode.name)
+
+    dstNodes = []
+    for node in full_list_nodes:
+        if node.name in dstnodes_names:
+            dstNodes.append(node)
+            dstnodes_names.remove(node.name)
+
+    
+    receiver_procs = []
+    if exp.non_lbf_flows or exp.lbf_flows:
+        start_receiver(
+            nodeList=dstNodes, verbose=True, timeout=10
+        )
+
     for non_lbf_flow in exp.non_lbf_flows:
 
         [
@@ -287,13 +288,12 @@ def run_experiment(exp):
             pkt_count,
         ] = non_lbf_flow._get_props()
 
-        # exp_end_t = max(exp_end_t, 300)
+        exp_end_t = max(exp_end_t, 10)
         new_ip_flow_generator_obj = NewIPFlowGenerator(
             srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count
         )
 
     for lbf_flow in exp.lbf_flows:
-        print("here-1")
         [
             srcNode,
             dstNode,
@@ -309,11 +309,11 @@ def run_experiment(exp):
 
         lbf_obj = LbfObj(min_delay, max_delay, hops)
 
-        exp_end_t = max(exp_end_t, 100)
+        exp_end_t = max(exp_end_t, 10)
         new_ip_flow_generator_obj = NewIPFlowGenerator(
             srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count, lbf_obj
         )
-    print("******* ", exp_end_t)
+
     if ss_required:
         ss_filter = " and ".join(ss_filters)
         ss_runners = setup_ss_runners(
