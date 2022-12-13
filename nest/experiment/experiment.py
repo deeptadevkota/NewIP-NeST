@@ -190,7 +190,7 @@ class NonLbfFlow:
         self.src_node = src_node
         self.dst_node = dst_node
         self.src_addr_type = src_addr_type
-        self.src_addr= src_addr
+        self.src_addr = src_addr
         self.dst_addr_type = dst_addr_type
         self.dst_addr = dst_addr
         self.pkt_count = pkt_count
@@ -224,14 +224,14 @@ class LbfFlow:
         dst_addr_type: str,
         dst_addr: str,
         pkt_count: int,
-        min_delay : int,
-        max_delay : int,
-        hops : int
+        min_delay: int,
+        max_delay: int,
+        hops: int,
     ):
         self.src_node = src_node
         self.dst_node = dst_node
         self.src_addr_type = src_addr_type
-        self.src_addr= src_addr
+        self.src_addr = src_addr
         self.dst_addr_type = dst_addr_type
         self.dst_addr = dst_addr
         self.pkt_count = pkt_count
@@ -256,8 +256,9 @@ class LbfFlow:
             self.pkt_count,
             self.min_delay,
             self.max_delay,
-            self.hops
+            self.hops,
         ]
+
 
 class PingFlow:
     @input_validator
@@ -274,7 +275,7 @@ class PingFlow:
         self.src_node = src_node
         self.dst_node = dst_node
         self.src_addr_type = src_addr_type
-        self.src_addr= src_addr
+        self.src_addr = src_addr
         self.dst_addr_type = dst_addr_type
         self.dst_addr = dst_addr
         self.pkt_count = pkt_count
@@ -295,6 +296,7 @@ class PingFlow:
             self.dst_addr,
             self.pkt_count,
         ]
+
 
 class Experiment:
     """Handles experiment to be run on topology"""

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0-only
 # Copyright (c) 2019-2022 @rohit-mp @bhaskar792 @shashank68
 
-from tabnanny import verbose
+import signal
 import time
 from scapy.all import *
 from New_IP.sender import Sender
@@ -19,6 +19,7 @@ ADDR_TYPES = {0: "ipv4", 1: "ipv6", 2: "8bit"}
 class Receiver:
     @staticmethod
     def process_pkt(self, pkt, iface):
+        self.pkt_count = self.pkt_count + 1
 
         if pkt[Ether].type == 0x0800:
             # IPv4
@@ -86,12 +87,19 @@ class Receiver:
                         f"{lbf_contract.experienced_delay}"
                     )
                     pkt_details = f"{pkt_details} contract:lbf [{lbf_params}]"
+                    # print(
+                    #         f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}"
+                    #     )
+
             if self.verbose == 2 or self.verbose >= 4:
                 os.system('echo "' + pkt_details + '" >> ' + self.filename)
             if self.verbose >= 3:
                 print(pkt_details)
 
     def __init__(self, node, verbose=1, folder=""):
+        self.sniff_thread = None
+        self.pkt_list = []
+        self.pkt_count = 0
         self.verbose = verbose
         conf.route.resync()
         conf.sniff_promisc = 0
@@ -108,20 +116,31 @@ class Receiver:
                 "receiver_stats_" + time.strftime("%d-%m-%Y-%H:%M:%S") + ".txt"
             )
 
-    def start(self, iface, timeout=20):
+
+    def exit_gracefully(self, *args):
+        # print("************* GRACEFULLY")
+        print("[INFO] " + str(self.pkt_count) + " New-IP pkts received at " + self.node.name)
+
+
+    def start(self, iface):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
         if not isinstance(iface, str):
             iface = iface.name
-
-        pkts = sniff(
+        # print("about to sniff!!!!")
+        self.pkt_list = sniff(
             iface=iface,
             filter="((ether proto 0x88b6) or (ip proto 254)) and inbound",
             prn=lambda x: self.process_pkt(self, x, iface),
-            timeout=timeout,
+            timeout=3000,
         )
-        if self.verbose >= 1:
-            print("[INFO] " + str(len(pkts)) + " New-IP pkts received at " + self.node.name)
-        if verbose == 2 or verbose >= 4:
-            parse = parse_receiver(self.filename)
-            parse.read_receiver_file()
-            parse.dump_jitter()
-            parse.plot()
+        # self.sniff_thread.start()
+        # print("Started sniffer!!!!")
+        # if self.verbose >= 1:
+        #     print("[INFO] " + str(len(pkts)) + " New-IP pkts received at " + self.node.name)
+        # if verbose == 2 or verbose >= 4:
+        #     parse = parse_receiver(self.filename)
+        #     parse.read_receiver_file()
+        #     parse.dump_jitter()
+        #     parse.plot()
+

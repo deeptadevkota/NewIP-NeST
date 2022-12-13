@@ -82,7 +82,8 @@ class LbfObj:
         self.c_max_delay = int(max_delay)
         self.hops = int(hops)
 
-def start_receiver(timeout=5, verbose=True, nodeList=[]):
+
+def start_receiver(verbose=True, nodeList=[]):
     receiver_processes = []
     for node in nodeList:
         for interface in node._interfaces:
@@ -90,19 +91,14 @@ def start_receiver(timeout=5, verbose=True, nodeList=[]):
                 try:
                     receiver_process = multiprocessing.Process(
                         target=receiver_proc,
-                        args=(
-                            node,
-                            interface,
-                            timeout,
-                            verbose
-                        ),
+                        args=(node, interface, verbose),
                     )
                 except:
                     print("receiver process error")
                 receiver_process.start()
                 receiver_processes.append(receiver_process)
 
-    return receiver_process
+    return receiver_processes
 
 
 def run_experiment(exp):
@@ -116,10 +112,8 @@ def run_experiment(exp):
 
     """
 
-    
-
-        # for receiver_proc in receiver_procs:
-        #     receiver_proc.join()
+    # for receiver_proc in receiver_procs:
+    #     receiver_proc.join()
 
     tcp_modules_helper(exp)
     tools = ["netperf", "ss", "tc", "iperf3", "ping", "coap", "server"]
@@ -257,7 +251,7 @@ def run_experiment(exp):
             pkt_count,
             min_delay,
             max_delay,
-            hops
+            hops,
         ] = lbf_flow._get_props()
         full_list_nodes.append(dstNode)
         if dstNode.name not in dstnodes_names:
@@ -284,13 +278,10 @@ def run_experiment(exp):
             dstNodes.append(node)
             dstnodes_names.remove(node.name)
 
-    
     # starting the receiver for all the destination node in new ip flows
     receiver_procs = []
     if exp.non_lbf_flows or exp.lbf_flows or exp.ping_flows:
-        start_receiver(
-            nodeList=dstNodes, verbose=True, timeout=10
-        )
+        receiver_procs = start_receiver(nodeList=dstNodes, verbose=True)
 
     # starting the receiver at the sender node as well but only for new-ip ping flows
     srcnodes_names = []
@@ -317,12 +308,12 @@ def run_experiment(exp):
             if node.name in srcnodes_names:
                 srcNodes.append(node)
                 srcnodes_names.remove(node.name)
-        start_receiver(
-            nodeList=srcNodes, verbose=True, timeout=10
+        receiver_procs.extend(
+            start_receiver(nodeList=srcNodes, verbose=True)
         )
 
-
     # Generating traffic for NewIP contract less lbf flow
+    sender_procs = []
     for non_lbf_flow in exp.non_lbf_flows:
 
         [
@@ -337,8 +328,17 @@ def run_experiment(exp):
 
         exp_end_t = max(exp_end_t, 10)
         type = "NON-LBF"
-        new_ip_flow_generator_obj = NewIPFlowGenerator(type,
-            srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count
+        sender_procs.append(
+            NewIPFlowGenerator(
+                type,
+                srcNode,
+                dstNode,
+                src_addr_type,
+                src_addr,
+                dst_addr_type,
+                dst_addr,
+                pkt_count,
+            ).start_sender()
         )
 
     for lbf_flow in exp.lbf_flows:
@@ -352,15 +352,25 @@ def run_experiment(exp):
             pkt_count,
             min_delay,
             max_delay,
-            hops
+            hops,
         ] = lbf_flow._get_props()
 
         lbf_obj = LbfObj(min_delay, max_delay, hops)
 
         exp_end_t = max(exp_end_t, 10)
         type = "LBF"
-        new_ip_flow_generator_obj = NewIPFlowGenerator( type,
-            srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count, lbf_obj
+        sender_procs.append(
+            NewIPFlowGenerator(
+                type,
+                srcNode,
+                dstNode,
+                src_addr_type,
+                src_addr,
+                dst_addr_type,
+                dst_addr,
+                pkt_count,
+                lbf_obj,
+            ).start_sender()
         )
 
     for ping_flow in exp.ping_flows:
@@ -377,18 +387,25 @@ def run_experiment(exp):
 
         exp_end_t = max(exp_end_t, 10)
         type = "PING"
-        new_ip_flow_generator_obj = NewIPFlowGenerator(type,
-            srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count
+        sender_procs.append(
+            NewIPFlowGenerator(
+                type,
+                srcNode,
+                dstNode,
+                src_addr_type,
+                src_addr,
+                dst_addr_type,
+                dst_addr,
+                pkt_count,
+            ).start_sender()
         )
 
     if ss_required:
         ss_filter = " and ".join(ss_filters)
-        ss_runners = setup_ss_runners(
-            dependencies["ss"], ss_schedules, ss_filter)
+        ss_runners = setup_ss_runners(dependencies["ss"], ss_schedules, ss_filter)
         exp_runners.ss.extend(ss_runners)
 
-    tc_runners = setup_tc_runners(
-        dependencies["tc"], exp.qdisc_stats, exp_end_t)
+    tc_runners = setup_tc_runners(dependencies["tc"], exp.qdisc_stats, exp_end_t)
     exp_runners.tc.extend(tc_runners)
 
     ping_runners = setup_ping_runners(dependencies["ping"], ping_schedules)
@@ -414,8 +431,7 @@ def run_experiment(exp):
         if config.get_value("readme_in_stats_folder"):
             # Copying README.txt to stats folder
             relative_path = os.path.join("info", "README.txt")
-            readme_path = os.path.join(
-                os.path.dirname(__file__), relative_path)
+            readme_path = os.path.join(os.path.dirname(__file__), relative_path)
             Pack.copy_files(readme_path)
 
         if config.get_value("plot_results"):
@@ -428,8 +444,17 @@ def run_experiment(exp):
 
         logger.info("Experiment %s complete!", exp.name)
 
-        for procs in receiver_procs:
+        for procs in sender_procs:
             procs.join()
+        # print("Sender side process joined!!")
+        time.sleep(4)
+        for procs in receiver_procs:
+            # print("Killing Receiver: ", procs)
+            procs.terminate()
+            # print(procs)
+            time.sleep(4)
+            procs.kill()
+
     except KeyboardInterrupt:
         logger.warning(
             "Experiment %s forcefully stopped. The results obtained maybe incomplete!",
@@ -463,8 +488,7 @@ def tcp_modules_helper(exp):
                     # the module is already loaded, so store the old parameters
                     # during experiment set these parameters with new values (reset=False)
                     # during cleanup reset these parameters with old values (reset=True)
-                    exp.old_cong_algos[cong_algo] = engine.get_current_params(
-                        cong_algo)
+                    exp.old_cong_algos[cong_algo] = engine.get_current_params(cong_algo)
                     engine.set_tcp_params(cong_algo, params, False)
                 else:
                     # the module will be newly loaded
@@ -535,13 +559,10 @@ def setup_plotter_workers():
     plotters = []
 
     plotters.append(Process(target=plot_ss, args=(SsResults.get_results(),)))
-    plotters.append(Process(target=plot_netperf,
-                    args=(NetperfResults.get_results(),)))
-    plotters.append(Process(target=plot_iperf3,
-                    args=(Iperf3Results.get_results(),)))
+    plotters.append(Process(target=plot_netperf, args=(NetperfResults.get_results(),)))
+    plotters.append(Process(target=plot_iperf3, args=(Iperf3Results.get_results(),)))
     plotters.append(Process(target=plot_tc, args=(TcResults.get_results(),)))
-    plotters.append(
-        Process(target=plot_ping, args=(PingResults.get_results(),)))
+    plotters.append(Process(target=plot_ping, args=(PingResults.get_results(),)))
 
     return plotters
 
@@ -932,8 +953,7 @@ def setup_coap_runners(dependency, flow, destination_nodes):
                     "coap_server_content" in user_options.keys()
                     and user_options["coap_server_content"] != ""
                 ):
-                    server_content = '"' + \
-                        user_options["coap_server_content"] + '"'
+                    server_content = '"' + user_options["coap_server_content"] + '"'
                     server_options = f"-c {server_content}"
                 else:
                     server_options = None
@@ -944,8 +964,7 @@ def setup_coap_runners(dependency, flow, destination_nodes):
             CoAPRunner.run_server(dst_ns, server_options)
 
         # Create the CoAPRunner object
-        coap_runner = CoAPRunner(
-            src_ns, dst_addr, user_options, n_con_msgs, n_non_msgs)
+        coap_runner = CoAPRunner(src_ns, dst_addr, user_options, n_con_msgs, n_non_msgs)
         runners.append(coap_runner)
 
     # If aiocoap is not installed
@@ -1046,7 +1065,16 @@ qdisc = "lbf"
 
 class NewIPFlowGenerator:
     def __init__(
-        self,type, srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count, lbf_obj=None
+        self,
+        type,
+        srcNode,
+        dstNode,
+        src_addr_type,
+        src_addr,
+        dst_addr_type,
+        dst_addr,
+        pkt_count,
+        lbf_obj=None,
     ):
         self.type = type
         self.srcNode = srcNode
@@ -1057,7 +1085,9 @@ class NewIPFlowGenerator:
         self.src_addr = src_addr
         self.dst_addr = dst_addr
         self.lbf_obj = lbf_obj
-        self.start_forwarder()
+
+    def start_sender(self):
+        return self.start_forwarder()
 
     def pkt_fill(self, index):
         START = "pkt# %d " % (index)
@@ -1073,20 +1103,22 @@ class NewIPFlowGenerator:
             self.dst_addr,
             content,
         )
-        
+
         if self.type == "LBF":
             params = self.lbf_obj.get_lbf_params()
-        
+
             lbf_contract = LatencyBasedForwarding(
-            min_delay=params[0],
-            max_delay=params[1],
-            fib_todelay=params[2],
-            fib_tohops=params[3],
+                min_delay=params[0],
+                max_delay=params[1],
+                fib_todelay=params[2],
+                fib_tohops=params[3],
             )
             sender.set_contract([lbf_contract])
 
     def create_ping_pkt(self, sender):
-        sender.make_packet(self.src_addr_type, self.src_addr, self.dst_addr_type, self.dst_addr, "PING")
+        sender.make_packet(
+            self.src_addr_type, self.src_addr, self.dst_addr_type, self.dst_addr, "PING"
+        )
         sending_ts = time.time_ns() // 1000000
         ping_contract = Ping(code=0, timestamp=sending_ts)
         sender.set_contract([ping_contract])
@@ -1098,8 +1130,8 @@ class NewIPFlowGenerator:
             for index in range(max(int(self.pkt_count), 1)):
                 sender = Sender()
                 payload = self.pkt_fill(index)
-                
-                if(self.type == "PING"):
+
+                if self.type == "PING":
                     self.create_ping_pkt(sender)
                 else:
                     self.create_lbf_pkt(sender, payload)
@@ -1110,3 +1142,4 @@ class NewIPFlowGenerator:
             target=self.sender_process, args=(self.srcNode,)
         )
         sender_proc.start()
+        return sender_proc

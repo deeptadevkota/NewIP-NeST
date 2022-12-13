@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0-only
 # Copyright (c) 2019-2022 @rohit-mp @bhaskar792 @shashank68
 
+import signal
 from time import sleep
 from nest.experiment import *
 from nest.topology import *
@@ -63,10 +64,13 @@ def tc_stats_proc(node, interface, timeout, folder):
     tc_s = tc_stats(node, interface, timeout, folder)
 
 
-def receiver_proc(node, iface, timeout, verbose=True, folder=""):
+def receiver_proc(node, iface, verbose=True, folder=""):
     # print("HI HELLO I IN RECIEVER PROC****")
+
     receiver_obj = Receiver(node, verbose, folder)
-    receiver_obj.start(iface=iface, timeout=timeout)
+    receiver_obj.start(iface=iface)
+
+   
 
 
 def setup_host(node, interfaces):
@@ -394,14 +398,3 @@ class Setup:
         with self.r3:
             print("--r3_h3--")
             os.system("tc -s qdisc show dev r3_h3")
-
-
-
-
-
-
-
-
-    
-
-
