@@ -259,6 +259,42 @@ class LbfFlow:
             self.hops
         ]
 
+class PingFlow:
+    @input_validator
+    def __init__(
+        self,
+        src_node: Node,
+        dst_node: Node,
+        src_addr_type: str,
+        src_addr: str,
+        dst_addr_type: str,
+        dst_addr: str,
+        pkt_count: int,
+    ):
+        self.src_node = src_node
+        self.dst_node = dst_node
+        self.src_addr_type = src_addr_type
+        self.src_addr= src_addr
+        self.dst_addr_type = dst_addr_type
+        self.dst_addr = dst_addr
+        self.pkt_count = pkt_count
+
+    def _get_props(self):
+        """
+        Get flow properties.
+
+        NOTE: To be used internally
+        """
+
+        return [
+            self.src_node,
+            self.dst_node,
+            self.src_addr_type,
+            self.src_addr,
+            self.dst_addr_type,
+            self.dst_addr,
+            self.pkt_count,
+        ]
 
 class Experiment:
     """Handles experiment to be run on topology"""
@@ -282,6 +318,7 @@ class Experiment:
         self.coap_flows = []
         self.non_lbf_flows = []
         self.lbf_flows = []
+        self.ping_flows = []
         self.node_stats = []
         self.qdisc_stats = []
         self.tcp_module_params = defaultdict(dict)
@@ -404,6 +441,10 @@ class Experiment:
     @input_validator
     def add_lbf_flow(self, lbf_flow: LbfFlow):
         self.lbf_flows.append(copy.deepcopy(lbf_flow))
+
+    @input_validator
+    def add_ping_flow(self, ping_flow: PingFlow):
+        self.ping_flows.append(copy.deepcopy(ping_flow))
 
     @input_validator
     def require_qdisc_stats(self, interface: BaseInterface, stats=""):

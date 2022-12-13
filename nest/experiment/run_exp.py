@@ -51,7 +51,7 @@ from ..engine.util import is_dependency_installed, is_package_installed
 
 
 from New_IP.setup import *
-from New_IP.newip_hdr import LatencyBasedForwarding
+from New_IP.newip_hdr import LatencyBasedForwarding, Ping
 
 # print(New_IP.__file__)
 
@@ -263,6 +263,21 @@ def run_experiment(exp):
         if dstNode.name not in dstnodes_names:
             dstnodes_names.append(dstNode.name)
 
+    for ping_flow in exp.ping_flows:
+        [
+            srcNode,
+            dstNode,
+            src_addr_type,
+            src_addr,
+            dst_addr_type,
+            dst_addr,
+            pkt_count,
+        ] = ping_flow._get_props()
+        full_list_nodes.append(dstNode)
+        if dstNode.name not in dstnodes_names:
+            dstnodes_names.append(dstNode.name)
+
+    # getting the non duplicate set of destination nodes in dstNodes in order to start the receiver
     dstNodes = []
     for node in full_list_nodes:
         if node.name in dstnodes_names:
@@ -270,12 +285,44 @@ def run_experiment(exp):
             dstnodes_names.remove(node.name)
 
     
+    # starting the receiver for all the destination node in new ip flows
     receiver_procs = []
-    if exp.non_lbf_flows or exp.lbf_flows:
+    if exp.non_lbf_flows or exp.lbf_flows or exp.ping_flows:
         start_receiver(
             nodeList=dstNodes, verbose=True, timeout=10
         )
 
+    # starting the receiver at the sender node as well but only for new-ip ping flows
+    srcnodes_names = []
+    full_list_nodes_src = []
+
+    for ping_flow in exp.ping_flows:
+        [
+            srcNode,
+            dstNode,
+            src_addr_type,
+            src_addr,
+            dst_addr_type,
+            dst_addr,
+            pkt_count,
+        ] = ping_flow._get_props()
+        full_list_nodes_src.append(srcNode)
+        if srcNode.name not in srcnodes_names:
+            srcnodes_names.append(srcNode.name)
+
+    # getting the non duplicate set of source nodes in srcNodes in order to start the receiver in the ping flow
+    srcNodes = []
+    if exp.ping_flows:
+        for node in full_list_nodes_src:
+            if node.name in srcnodes_names:
+                srcNodes.append(node)
+                srcnodes_names.remove(node.name)
+        start_receiver(
+            nodeList=srcNodes, verbose=True, timeout=10
+        )
+
+
+    # Generating traffic for NewIP contract less lbf flow
     for non_lbf_flow in exp.non_lbf_flows:
 
         [
@@ -289,7 +336,8 @@ def run_experiment(exp):
         ] = non_lbf_flow._get_props()
 
         exp_end_t = max(exp_end_t, 10)
-        new_ip_flow_generator_obj = NewIPFlowGenerator(
+        type = "NON-LBF"
+        new_ip_flow_generator_obj = NewIPFlowGenerator(type,
             srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count
         )
 
@@ -310,8 +358,27 @@ def run_experiment(exp):
         lbf_obj = LbfObj(min_delay, max_delay, hops)
 
         exp_end_t = max(exp_end_t, 10)
-        new_ip_flow_generator_obj = NewIPFlowGenerator(
+        type = "LBF"
+        new_ip_flow_generator_obj = NewIPFlowGenerator( type,
             srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count, lbf_obj
+        )
+
+    for ping_flow in exp.ping_flows:
+
+        [
+            srcNode,
+            dstNode,
+            src_addr_type,
+            src_addr,
+            dst_addr_type,
+            dst_addr,
+            pkt_count,
+        ] = ping_flow._get_props()
+
+        exp_end_t = max(exp_end_t, 10)
+        type = "PING"
+        new_ip_flow_generator_obj = NewIPFlowGenerator(type,
+            srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count
         )
 
     if ss_required:
@@ -979,8 +1046,9 @@ qdisc = "lbf"
 
 class NewIPFlowGenerator:
     def __init__(
-        self, srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count, lbf_obj=None
+        self,type, srcNode, dstNode, src_addr_type, src_addr, dst_addr_type, dst_addr, pkt_count, lbf_obj=None
     ):
+        self.type = type
         self.srcNode = srcNode
         self.dstNode = dstNode
         self.pkt_count = pkt_count
@@ -1006,7 +1074,7 @@ class NewIPFlowGenerator:
             content,
         )
         
-        if self.lbf_obj is not None:
+        if self.type == "LBF":
             params = self.lbf_obj.get_lbf_params()
         
             lbf_contract = LatencyBasedForwarding(
@@ -1017,6 +1085,12 @@ class NewIPFlowGenerator:
             )
             sender.set_contract([lbf_contract])
 
+    def create_ping_pkt(self, sender):
+        sender.make_packet(self.src_addr_type, self.src_addr, self.dst_addr_type, self.dst_addr, "PING")
+        sending_ts = time.time_ns() // 1000000
+        ping_contract = Ping(code=0, timestamp=sending_ts)
+        sender.set_contract([ping_contract])
+
     def sender_process(self, srcNode):
         with srcNode:
             srcIf = srcNode._interfaces[0].name
@@ -1025,9 +1099,10 @@ class NewIPFlowGenerator:
                 sender = Sender()
                 payload = self.pkt_fill(index)
                 
-                self.create_lbf_pkt(sender, payload)
-            
-
+                if(self.type == "PING"):
+                    self.create_ping_pkt(sender)
+                else:
+                    self.create_lbf_pkt(sender, payload)
                 sender.send_packet(iface=srcIf, show_pkt=True)
 
     def start_forwarder(self):
