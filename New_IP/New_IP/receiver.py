@@ -96,7 +96,7 @@ class Receiver:
             if self.verbose >= 3:
                 print(pkt_details)
 
-    def __init__(self, node, verbose=1, folder=""):
+    def __init__(self, node, verbose=1, folder="", timeout =0):
         self.sniff_thread = None
         self.pkt_list = []
         self.pkt_count = 0
@@ -104,6 +104,9 @@ class Receiver:
         conf.route.resync()
         conf.sniff_promisc = 0
         self.node = node
+        self.timeout = timeout
+        if(self.timeout == 0):
+            self.timeout = 5000
         if folder != "":
             self.filename = (
                 folder
@@ -128,16 +131,17 @@ class Receiver:
         if not isinstance(iface, str):
             iface = iface.name
         # print("about to sniff!!!!")
+        print("******* timeout is *********** ", self.timeout)
         self.pkt_list = sniff(
             iface=iface,
             filter="((ether proto 0x88b6) or (ip proto 254)) and inbound",
             prn=lambda x: self.process_pkt(self, x, iface),
-            timeout=3000,
+            timeout=self.timeout,
         )
         # self.sniff_thread.start()
         # print("Started sniffer!!!!")
-        # if self.verbose >= 1:
-        #     print("[INFO] " + str(len(pkts)) + " New-IP pkts received at " + self.node.name)
+        if self.verbose >= 1:
+            print("[INFO] " + str(len(self.pkt_list)) + " New-IP pkts received at " + self.node.name)
         # if verbose == 2 or verbose >= 4:
         #     parse = parse_receiver(self.filename)
         #     parse.read_receiver_file()

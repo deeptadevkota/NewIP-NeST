@@ -27,7 +27,7 @@ from New_IP.newip_hdr import LatencyBasedForwarding
 
 setup_obj = Setup()
 setup_obj.setup_topology(buildLbf=False)
-setup_obj.start_receiver(timeout=2)
+setup_obj.start_receiver(timeout = 5)
 setup_obj.generate_pcap(interfaces=["h1_r1"], timeout=2)
 
 with setup_obj.h1:

@@ -325,8 +325,8 @@ def run_experiment(exp):
             dst_addr,
             pkt_count,
         ] = non_lbf_flow._get_props()
-
-        exp_end_t = max(exp_end_t, 10)
+        config.set_value("show_progress_bar", False)
+        # exp_end_t = max(exp_end_t, 10)
         type = "NON-LBF"
         sender_procs.append(
             NewIPFlowGenerator(
@@ -354,10 +354,10 @@ def run_experiment(exp):
             max_delay,
             hops,
         ] = lbf_flow._get_props()
-
+        config.set_value("show_progress_bar", False)
         lbf_obj = LbfObj(min_delay, max_delay, hops)
 
-        exp_end_t = max(exp_end_t, 10)
+        # exp_end_t = max(exp_end_t, 10)
         type = "LBF"
         sender_procs.append(
             NewIPFlowGenerator(
@@ -384,8 +384,8 @@ def run_experiment(exp):
             dst_addr,
             pkt_count,
         ] = ping_flow._get_props()
-
-        exp_end_t = max(exp_end_t, 10)
+        config.set_value("show_progress_bar", False)
+        # exp_end_t = max(exp_end_t, 10)
         type = "PING"
         sender_procs.append(
             NewIPFlowGenerator(

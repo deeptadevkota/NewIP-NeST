@@ -126,4 +126,4 @@ with setup_obj.h1:
     time.sleep(3)
 
 
-setup_obj.show_stats()
+# setup_obj.show_stats()

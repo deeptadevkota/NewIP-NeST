@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0-only
 # Copyright (c) 2019-2022 @rohit-mp @bhaskar792 @shashank68
 
+import logging
 import signal
 from time import sleep
-from nest.experiment import *
 from nest.topology import *
 from nest.routing.routing_helper import RoutingHelper
 import nest.config as config
@@ -64,13 +64,11 @@ def tc_stats_proc(node, interface, timeout, folder):
     tc_s = tc_stats(node, interface, timeout, folder)
 
 
-def receiver_proc(node, iface, verbose=True, folder=""):
+def receiver_proc(node, iface, verbose=True, folder="", timeout=0):
     # print("HI HELLO I IN RECIEVER PROC****")
 
-    receiver_obj = Receiver(node, verbose, folder)
+    receiver_obj = Receiver(node, verbose, folder, timeout)
     receiver_obj.start(iface=iface)
-
-   
 
 
 def setup_host(node, interfaces):
@@ -80,7 +78,8 @@ def setup_host(node, interfaces):
                 "../New_IP/xdp/newip_router/xdp_loader  --quiet --progsec xdp_pass --filename ../New_IP/xdp/newip_router/xdp_prog_kern.o --dev "
                 + interface.name
             )
-            os.system("tc qdisc replace dev " + interface.name + " root " + qdisc)
+            os.system("tc qdisc replace dev " +
+                      interface.name + " root " + qdisc)
 
 
 # Create 'routing table' for 8bit address
@@ -164,8 +163,6 @@ def check_and_set_routing_suite(routing):
     print("INFO: Routing suite is set with ", routing)
 
 
-import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -181,7 +178,7 @@ class Setup:
         else:
             self.folder = base_results_folder
 
-    def start_receiver(self, timeout=5, verbose=True, nodeList=[]):
+    def start_receiver(self, verbose=True, nodeList=[], timeout=0):
         if not nodeList:
             nodeList = self.hostNodes
         receiver_processes = []
@@ -196,9 +193,9 @@ class Setup:
                             args=(
                                 node,
                                 interface,
-                                timeout,
                                 verbose,
                                 self.folder,
+                                timeout
                             ),
                         )
                     except:
@@ -227,7 +224,8 @@ class Setup:
                 for interface in node._interfaces:
                     if (interface.name in interfaces) or not interfaces:
                         tcpdump_process = multiprocessing.Process(
-                            target=tcpdump_proc, args=(interface, timeout, dir_name)
+                            target=tcpdump_proc, args=(
+                                interface, timeout, dir_name)
                         )
                         tcpdump_process.start()
 
@@ -244,7 +242,8 @@ class Setup:
                         print(f"generating tc stats for {interface}")
                         tc_stats_process = multiprocessing.Process(
                             target=tc_stats_proc,
-                            args=(node.name, interface.name, timeout, self.folder),
+                            args=(node.name, interface.name,
+                                  timeout, self.folder),
                         )
                         tc_stats_process.start()
 
@@ -338,7 +337,8 @@ class Setup:
         RoutingHelper(protocol="rip").populate_routing_tables()
 
         print("ipv6")
-        RoutingHelper(protocol="rip", ipv6_routing=True).populate_routing_tables()
+        RoutingHelper(protocol="rip",
+                      ipv6_routing=True).populate_routing_tables()
         # sleep(6000)
 
         # sleep(6000)

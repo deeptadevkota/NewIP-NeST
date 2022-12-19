@@ -27,7 +27,7 @@ import os
 
 setup_obj = Setup()
 setup_obj.setup_topology()
-setup_obj.start_receiver()
+setup_obj.start_receiver(timeout=5)
 
 with setup_obj.h1:
     sender_obj = Sender()
