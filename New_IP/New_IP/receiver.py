@@ -131,7 +131,7 @@ class Receiver:
         if not isinstance(iface, str):
             iface = iface.name
         # print("about to sniff!!!!")
-        print("******* timeout is *********** ", self.timeout)
+        # print("******* timeout is *********** ", self.timeout)
         self.pkt_list = sniff(
             iface=iface,
             filter="((ether proto 0x88b6) or (ip proto 254)) and inbound",

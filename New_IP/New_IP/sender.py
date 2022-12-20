@@ -52,7 +52,7 @@ def get_gw_mac(src_iface, dst, dst_addr_type):
         print(get_neighbor)
 
         value = exec_subprocess(get_neighbor, output=True)
-        print("**************************")
+        # print("**************************")
         print(value)
         # sleep(6000)
         dst_mac = value.split()[2]

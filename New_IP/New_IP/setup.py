@@ -75,7 +75,7 @@ def setup_host(node, interfaces):
     with node:
         for interface in interfaces:
             os.system(
-                "../New_IP/xdp/newip_router/xdp_loader  --quiet --progsec xdp_pass --filename ../New_IP/xdp/newip_router/xdp_prog_kern.o --dev "
+                "../xdp/newip_router/xdp_loader  --quiet --progsec xdp_pass --filename ../xdp/newip_router/xdp_prog_kern.o --dev "
                 + interface.name
             )
             os.system("tc qdisc replace dev " +
@@ -121,11 +121,11 @@ def setup_router(node, interfaces, bottleneck_queue_len):
     with node:
         for interface in interfaces:
             os.system(
-                "../New_IP/xdp/newip_router/xdp_loader --quiet --progsec xdp_router --filename ../New_IP/xdp/newip_router/xdp_prog_kern.o --dev "
+                "../xdp/newip_router/xdp_loader --quiet --progsec xdp_router --filename ../xdp/newip_router/xdp_prog_kern.o --dev "
                 + interface.name
             )
             os.system(
-                "sudo ../New_IP/xdp/newip_router/xdp_prog_user --quiet --filename "
+                "sudo ../xdp/newip_router/xdp_prog_user --quiet --filename "
                 + route
                 + " -d "
                 + interface.name
@@ -134,7 +134,7 @@ def setup_router(node, interfaces, bottleneck_queue_len):
             os.system(
                 "tc filter add dev "
                 + interface.name
-                + " ingress bpf da obj ../New_IP/xdp/newip_router/tc_prog_kern.o sec tc_router"
+                + " ingress bpf da obj ../xdp/newip_router/tc_prog_kern.o sec tc_router"
             )
             os.system(
                 f"tc qdisc replace dev "
@@ -260,7 +260,7 @@ class Setup:
             exit()
 
         # Verify no errors in xdp programs
-        if os.system("make -C ../New_IP/xdp/newip_router/") != 0:
+        if os.system("make -C ../xdp/newip_router/") != 0:
             exit()
 
         # Verify no errors in qdisc
@@ -274,9 +274,9 @@ class Setup:
             ).communicate()[0]
             == b""
         ):
-            if os.system("cd ../New_IP/lbf; ./install-module") != 0:
+            if os.system("cd ../lbf; ./install-module") != 0:
                 exit()
-            if os.system("cd ../New_IP/lbf; ./install-tc-support") != 0:
+            if os.system("cd ../lbf; ./install-tc-support") != 0:
                 exit()
         # Create nodes
 
